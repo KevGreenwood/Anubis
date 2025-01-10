@@ -2,7 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/anubis/anubis.iml" filepath="$PROJECT_DIR$/anubis/anubis.iml" />
+      <module fileurl="file://$PROJECT_DIR$/anubis.iml" filepath="$PROJECT_DIR$/anubis.iml" />
+      <module fileurl="file://$PROJECT_DIR$/android/anubis_android.iml" filepath="$PROJECT_DIR$/android/anubis_android.iml" />
     </modules>
   </component>
 </project>
