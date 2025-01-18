@@ -1,31 +1,120 @@
 import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:html/parser.dart';
 
 
-void main() async
+class Scrapper
 {
-  try
+  Future<Map<String, String>> fetchAppDetails(String packageName) async
   {
-    Future<String> runAdbCommand(List<String> arguments) async
+    final response = await http.get(Uri.parse("https://play.google.com/store/apps/details?id=$packageName"));
+    try
+    {
+      if (response.statusCode != 200)
+      {
+        throw Exception("No se pudo obtener la información de la app");
+      }
+
+      var document = parse(response.body);
+      String? appName = document.querySelector('span[itemprop="name"]')?.text.trim();
+      String? author = document.querySelector('a[href^="/store/apps/developer?id="] span, a[href^="/store/apps/dev?id="] span')?.text.trim();
+
+      return
+        {
+          'appName': appName ?? 'Unknown',
+          'author': author ?? 'Unknown',
+        };
+    }
+    catch (e)
+    {
+      return {'appName': 'Unknown', 'author': 'Unknown'};
+    }
+  }
+}
+
+class ADB
+{
+  Future<String> runAdbCommand(List<String> arguments) async
+  {
+    try
     {
       ProcessResult result = await Process.run("adb-tools/adb.exe", arguments);
       if (result.exitCode != 0)
       {
-        throw Exception("Error ejecutando comando ADB: ${result.stderr}");
+        throw Exception(result.stderr);
       }
       return result.stdout.toString().trim();
     }
-
-    String manufacturer = await runAdbCommand(["shell", "getprop ro.product.manufacturer"]);
-    String model = await runAdbCommand(["shell", "getprop ro.product.model"]);
-    String androidVersion = await runAdbCommand(["shell", "getprop ro.build.version.release"]);
-    String listApps = await runAdbCommand(["shell", "pm list packages"]);
-
-    print("Device: $manufacturer $model");
-    print("Android Version: $androidVersion");
-    print(listApps);
+    catch (e)
+    {
+      return "$e";
+    }
   }
-  catch (e)
+}
+
+class Device
+{
+  static String brand = '';
+  static String model = '';
+  static String os = '';
+
+  static Future<void> fetchDeviceInfo() async
   {
-    print("Ocurrió un error: $e");
+    brand = await ADB().runAdbCommand(["shell", "getprop ro.product.manufacturer"]);
+    String fakeModel = await ADB().runAdbCommand(["shell", "getprop ro.product.model"]);
+    String realModel = await ADB().runAdbCommand(["shell", "getprop ro.product.vendor.marketname"]);
+    String osVersion = await ADB().runAdbCommand(["shell", "getprop ro.build.version.release"]);
+
+    model = "$realModel ($fakeModel)";
+    os = "Android $osVersion";
+  }
+}
+
+class Application
+{
+  String packageName;
+  String appName;
+  String author;
+
+  Application({required this.packageName, required this.appName, required this.author});
+
+  @override
+  String toString()
+  {
+    return 'Application(appName: $appName, packageName: $packageName, author: $author)';
+  }
+}
+
+class AppManager
+{
+  final int maxConcurrency = 20;
+  late List<Application> applications;
+
+  Future<void> fetchAllApplications() async
+  {
+    String listApps = await ADB().runAdbCommand(["shell", "pm list packages"]);
+    List<String> packageNames = listApps.split('\n')
+        .where((line) => line.startsWith('package:'))
+        .map((line) => line.replaceFirst('package:', '').trim()).toList();
+
+    applications = [];
+    List<Future<void>> futures = [];
+
+    for (int i = 0; i < packageNames.length; i++)
+    {
+      futures.add(Scrapper().fetchAppDetails(packageNames[i]).then((details) {
+        applications.add(Application(
+          packageName: packageNames[i],
+          appName: details['appName']!,
+          author: details['author']!,
+        ));
+      }));
+
+      if (futures.length == maxConcurrency || i == packageNames.length - 1)
+      {
+        await Future.wait(futures);
+        futures.clear();
+      }
+    }
   }
 }

@@ -3,8 +3,13 @@ import 'package:anubis/pages/clean_page.dart';
 import 'package:anubis/pages/home_page.dart';
 import 'package:anubis/pages/settings_page.dart';
 import 'package:flutter/material.dart';
+import 'utils/adb.dart';
 
-void main() => runApp(const MyApp());
+void main() async
+{
+  await Device.fetchDeviceInfo();
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
