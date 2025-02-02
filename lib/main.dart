@@ -7,15 +7,18 @@ import 'utils/adb.dart';
 
 void main() async
 {
+  await ADB_Shell.start();
   await Device.fetchDeviceInfo();
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatelessWidget
+{
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context)
+  {
     return MaterialApp(
       title: 'Anubis',
       theme: ThemeData(
@@ -27,7 +30,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class MyHomePage extends StatefulWidget
+{
   const MyHomePage({super.key, required this.title});
 
   // This widget is the home page of your application. It is stateful, meaning
@@ -45,7 +49,8 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage>
+{
   static List<Widget> _pageOptions = [
     HomePage(),
     AndroidPage(),
@@ -54,9 +59,17 @@ class _MyHomePageState extends State<MyHomePage> {
   ];
   int _selectedIndex = 0;
 
+  @override
+  void dispose()
+  {
+    ADB_Shell.close();
+    super.dispose();
+  }
+
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context)
+  {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.greenAccent,

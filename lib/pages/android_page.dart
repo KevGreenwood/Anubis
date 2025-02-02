@@ -23,25 +23,33 @@ class _AndroidPageState extends State<AndroidPage>
   Future<void> _loadApplications() async
   {
     await appManager.fetchAllApplications();
-    setState(() {
-      isLoading = false;
-    });
+    setState(() { isLoading = false; });
   }
 
-  void _deleteApp(Application app)
+  void _deleteApp(Application app) async
   {
-    ADB().runAdbCommand(["shell", "pm uninstall --user 0 ${app.packageName}"]);
-    setState(() {
-      appManager.applications.remove(app);
+    String output = await ADB_Shell.runCommand("pm uninstall --user 0 ${app.packageName}");
 
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${app.appName} eliminada')),
-    );
+    if (output.contains("Success"))
+    {
+      setState(() { appManager.applications.remove(app); });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${app.appName} eliminada'), backgroundColor: Colors.greenAccent,),
+      );
+    }
+    else
+    {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${app.appName} $output'), backgroundColor: Colors.redAccent,),
+      );
+    }
   }
+
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context)
+  {
     return Scaffold(
       appBar: AppBar(title: Text('Aplicaciones Instaladas')),
       body: isLoading

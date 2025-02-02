@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:async';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart';
 
@@ -36,7 +38,7 @@ class Scrapper
 
 class ADB
 {
-  Future<String> runAdbCommand(List<String> arguments) async
+  static Future<String> runCommand(List<String> arguments) async
   {
     try
     {
@@ -55,6 +57,54 @@ class ADB
   }
 }
 
+
+class ADB_Shell
+{
+  static Process? _process;
+  static StreamSubscription<String>? _outputSubscription;
+  static Completer<void> _ready = Completer<void>();
+  static Completer<String>? _commandResponse;
+  static String _buffer = '';
+  static const String _delimiter = "END_OF_COMMAND";
+
+  static Future<void> start() async
+  {
+    if (_process != null) return;
+    _process = await Process.start("adb-tools/adb.exe", ["shell"], mode: ProcessStartMode.normal);
+
+    _outputSubscription = _process!.stdout.transform(utf8.decoder).listen((data)
+    {
+      _buffer += data;
+
+      if (_commandResponse != null && _buffer.contains(_delimiter))
+      {
+        _commandResponse!.complete(_buffer.replaceAll(_delimiter, '').trim());
+        _commandResponse = null;
+        _buffer = '';
+      }
+    });
+
+    _process!.stderr.transform(utf8.decoder).listen((data) { print("Error: $data"); });
+    _ready.complete();
+  }
+
+  static Future<String> runCommand(String command) async
+  {
+    await _ready.future;
+    _commandResponse = Completer<String>();
+    _process?.stdin.writeln("$command; echo $_delimiter");
+    return _commandResponse!.future;
+  }
+
+  static Future<void> close() async
+  {
+    await runCommand("exit");
+    await _outputSubscription?.cancel();
+    _process?.kill();
+    _process = null;
+  }
+}
+
 class Device
 {
   static String brand = '';
@@ -63,66 +113,49 @@ class Device
 
   static Future<void> fetchDeviceInfo() async
   {
-    brand = await ADB().runAdbCommand(["shell", "getprop ro.product.manufacturer"]);
-    String fakeModel = await ADB().runAdbCommand(["shell", "getprop ro.product.model"]);
-    String realModel = await ADB().runAdbCommand(["shell", "getprop ro.product.vendor.marketname"]);
-    String osVersion = await ADB().runAdbCommand(["shell", "getprop ro.build.version.release"]);
+    brand = await ADB_Shell.runCommand("getprop ro.product.manufacturer");
+    String fakeModel = await ADB_Shell.runCommand("getprop ro.product.model");
+    String realModel = await ADB_Shell.runCommand("getprop ro.product.vendor.marketname");
+    String osVersion = await ADB_Shell.runCommand("getprop ro.build.version.release");
 
     model = "$realModel ($fakeModel)";
     os = "Android $osVersion";
   }
 }
 
-class Application
-{
+class Application {
   String packageName;
   String appName;
   String author;
   String iconPath;
 
-  Application({required this.packageName, required this.appName, required this.author, required this.iconPath});
+  Application({
+    required this.packageName,
+    required String appName,
+    required String author,
+    required this.iconPath,
+  })  : appName = appName.isEmpty ? packageName : appName,
+        author = _getAuthor(packageName, author);
+
+
+  static String _getAuthor(String packageName, String author)
+  {
+    if (author.isEmpty && (packageName.startsWith("com.android") || packageName.startsWith("android") || packageName.contains(Device.brand.toLowerCase())) )
+    {
+      return "OEM";
+    }
+    else if (author.isEmpty && packageName.startsWith("com.google"))
+    {
+      return "Google LLC";
+    }
+    else
+    {
+      return author;
+    }
+  }
 
   @override
-  String toString()
-  {
+  String toString() {
     return 'Application(appName: $appName, packageName: $packageName, author: $author, iconPath: $iconPath)';
-  }
-}
-
-class AppManager
-{
-  final int maxConcurrency = 20;
-  late List<Application> applications;
-
-  Future<void> fetchAllApplications() async
-  {
-    String listApps = await ADB().runAdbCommand(["shell", "pm list packages | grep gl"]);
-    List<String> packageNames = listApps.split('\n')
-        .where((line) => line.startsWith('package:'))
-        .map((line) => line.replaceFirst('package:', '').trim()).toList();
-
-    applications = [];
-    List<Future<void>> futures = [];
-
-    print("Getting info...");
-
-    for (int i = 0; i < packageNames.length; i++)
-    {
-      print("App #$i");
-      futures.add(Scrapper().fetchAppDetails(packageNames[i]).then((details) {
-        applications.add(Application(
-          packageName: packageNames[i],
-          appName: details['appName']!,
-          author: details['author']!,
-          iconPath: details['iconPath']!
-        ));
-      }));
-
-      if (futures.length == maxConcurrency || i == packageNames.length - 1)
-      {
-        await Future.wait(futures);
-        futures.clear();
-      }
-    }
   }
 }
