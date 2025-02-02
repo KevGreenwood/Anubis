@@ -18,16 +18,18 @@ class Scrapper
       var document = parse(response.body);
       String? appName = document.querySelector('span[itemprop="name"]')?.text.trim();
       String? author = document.querySelector('a[href^="/store/apps/developer?id="] span, a[href^="/store/apps/dev?id="] span')?.text.trim();
+      String? iconPath = document.querySelector('.RhBWnf img')?.attributes['src'];
 
       return
         {
-          'appName': appName ?? 'Unknown',
-          'author': author ?? 'Unknown',
+          'appName': appName ?? '',
+          'author': author ?? '',
+          'iconPath': iconPath ?? ''
         };
     }
     catch (e)
     {
-      return {'appName': 'Unknown', 'author': 'Unknown'};
+      return {'appName': '', 'author': '', 'iconPath': ''};
     }
   }
 }
@@ -39,6 +41,7 @@ class ADB
     try
     {
       ProcessResult result = await Process.run("adb-tools/adb.exe", arguments);
+      print(result.stdout);
       if (result.exitCode != 0)
       {
         throw Exception(result.stderr);
@@ -75,13 +78,14 @@ class Application
   String packageName;
   String appName;
   String author;
+  String iconPath;
 
-  Application({required this.packageName, required this.appName, required this.author});
+  Application({required this.packageName, required this.appName, required this.author, required this.iconPath});
 
   @override
   String toString()
   {
-    return 'Application(appName: $appName, packageName: $packageName, author: $author)';
+    return 'Application(appName: $appName, packageName: $packageName, author: $author, iconPath: $iconPath)';
   }
 }
 
@@ -92,7 +96,7 @@ class AppManager
 
   Future<void> fetchAllApplications() async
   {
-    String listApps = await ADB().runAdbCommand(["shell", "pm list packages"]);
+    String listApps = await ADB().runAdbCommand(["shell", "pm list packages | grep gl"]);
     List<String> packageNames = listApps.split('\n')
         .where((line) => line.startsWith('package:'))
         .map((line) => line.replaceFirst('package:', '').trim()).toList();
@@ -100,13 +104,17 @@ class AppManager
     applications = [];
     List<Future<void>> futures = [];
 
+    print("Getting info...");
+
     for (int i = 0; i < packageNames.length; i++)
     {
+      print("App #$i");
       futures.add(Scrapper().fetchAppDetails(packageNames[i]).then((details) {
         applications.add(Application(
           packageName: packageNames[i],
           appName: details['appName']!,
           author: details['author']!,
+          iconPath: details['iconPath']!
         ));
       }));
 

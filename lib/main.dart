@@ -46,7 +46,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  static const List<Widget> _pageOptions = [
+  static List<Widget> _pageOptions = [
     HomePage(),
     AndroidPage(),
     CleanPage(),

@@ -1,43 +1,61 @@
 import 'package:flutter/material.dart';
-
 import '../utils/app_card.dart';
+import '../utils/adb.dart';
 
-class AndroidPage extends StatelessWidget
+class AndroidPage extends StatefulWidget
 {
-  const AndroidPage({super.key});
+  @override
+  _AndroidPageState createState() => _AndroidPageState();
+}
 
-  static List<String> categories = ["Recommended", "All", "System"];
-  final String _selectedCategory = "Recommended";
-  static List<String> state = ["All packages", "Enabled", "Disabled", "Uninstalled"];
-  final String _selectedState = "All packages";
-  static List<String> brands = ["All packages", "AOSP", "Google", "Meta", "Microsoft", "Samsung", "Xiaomi"];
-  final String _selectedBrands = "All packages";
+class _AndroidPageState extends State<AndroidPage>
+{
+  final AppManager appManager = AppManager();
+  bool isLoading = true;
 
   @override
-  Widget build(BuildContext context)
+  void initState()
   {
+    super.initState();
+    _loadApplications();
+  }
+
+  Future<void> _loadApplications() async
+  {
+    await appManager.fetchAllApplications();
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  void _deleteApp(Application app)
+  {
+    ADB().runAdbCommand(["shell", "pm uninstall --user 0 ${app.packageName}"]);
+    setState(() {
+      appManager.applications.remove(app);
+
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${app.appName} eliminada')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-        body: Column(
-          children: [
-            Center(
-              child: Row(children:
-              [
-                DropdownMenu(
-                    dropdownMenuEntries: categories.map((i) => DropdownMenuEntry(value: i, label: i)).toList(),
-                initialSelection: _selectedCategory),
-                DropdownMenu(
-                    dropdownMenuEntries: state.map((i) => DropdownMenuEntry(value: i, label: i)).toList(),
-                    initialSelection: _selectedState),
-                DropdownMenu(
-                    dropdownMenuEntries: brands.map((i) => DropdownMenuEntry(value: i, label: i)).toList(),
-                    initialSelection: _selectedBrands)
-              ],
-              ),
-            ),
-            //Center(child: ListView())
-          ],
-        )
+      appBar: AppBar(title: Text('Aplicaciones Instaladas')),
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : ListView.builder(
+        itemCount: appManager.applications.length,
+        itemBuilder: (context, index) {
+          final app = appManager.applications[index];
+          return appCard(
+            app,
+            onDelete: () => _deleteApp(app),
+          );
+        },
+      ),
     );
   }
 }
-
