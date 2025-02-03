@@ -42,7 +42,7 @@ class ADB
   {
     try
     {
-      ProcessResult result = await Process.run("adb-tools/adb.exe", arguments);
+      ProcessResult result = await Process.run("adb-tools/${Platform.isWindows ? "adb.exe" : "adb"}", arguments);
       print(result.stdout);
       if (result.exitCode != 0)
       {
@@ -70,7 +70,7 @@ class ADB_Shell
   static Future<void> start() async
   {
     if (_process != null) return;
-    _process = await Process.start("adb-tools/adb.exe", ["shell"], mode: ProcessStartMode.normal);
+    _process = await Process.start("adb-tools/${Platform.isWindows ? "adb.exe" : "adb"}", ["shell"], mode: ProcessStartMode.normal);
 
     _outputSubscription = _process!.stdout.transform(utf8.decoder).listen((data)
     {
