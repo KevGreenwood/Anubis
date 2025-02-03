@@ -43,7 +43,6 @@ class ADB
     try
     {
       ProcessResult result = await Process.run("adb-tools/${Platform.isWindows ? "adb.exe" : "adb"}", arguments);
-      print(result.stdout);
       if (result.exitCode != 0)
       {
         throw Exception(result.stderr);

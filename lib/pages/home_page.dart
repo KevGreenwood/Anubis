@@ -9,11 +9,39 @@ class HomePage extends StatefulWidget
 
 class _HomePageState extends State<HomePage>
 {
+  String device = "Connect your device and click Refresh";
   int selectedOption = 1;
 
   final TextEditingController lmao = TextEditingController();
   final TextEditingController lol = TextEditingController();
 
+  @override
+  void initState()
+  {
+    super.initState();
+    init();
+  }
+
+  void init() async
+  {
+    var lol = await ADB.runCommand(["devices"]);
+    if (lol.toString() == "List of devices attached")
+    {
+      setState(() {
+        device = "Connect your device and click Refresh";
+      });
+      await ADB_Shell.close();
+
+    }
+    else
+    {
+      await ADB_Shell.start();
+      await Device.fetchDeviceInfo();
+      setState(() {
+        device = "${Device.brand} ${Device.model}";
+      });
+    }
+  }
 
   Future<void> _showMyDialog() async {
     return showDialog<void>(
@@ -71,11 +99,12 @@ class _HomePageState extends State<HomePage>
   }
 
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(children: [Icon(Icons.error, color: Colors.redAccent, size: 100,), Text("${Device.brand} ${Device.model}"),
+        child: Column(children: [Icon(Icons.error, color: Colors.redAccent, size: 100,), Text(device),
           ListTile(
             title: const Text('USB Connection'),
             leading: Radio<int>(
@@ -105,7 +134,7 @@ class _HomePageState extends State<HomePage>
               },
             ),
           ),
-          ElevatedButton(onPressed: () {ADB.runCommand(["devices"]);}, child: const Text("Refresh")), ]),
+          ElevatedButton(onPressed: () async { init(); }, child: const Text("Refresh")), ]),
       ),
     );
   }

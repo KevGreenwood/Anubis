@@ -7,8 +7,6 @@ import 'utils/adb.dart';
 
 void main() async
 {
-  await ADB_Shell.start();
-  await Device.fetchDeviceInfo();
   runApp(const MyApp());
 }
 
@@ -71,10 +69,7 @@ class _MyHomePageState extends State<MyHomePage>
   Widget build(BuildContext context)
   {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.greenAccent,
-        title: Text(widget.title),
-      ),
+
       body: Row(
         children: <Widget>[
           NavigationRail(
