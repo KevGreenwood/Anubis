@@ -36,28 +36,8 @@ class Scrapper
   }
 }
 
+
 class ADB
-{
-  static Future<String> runCommand(List<String> arguments) async
-  {
-    try
-    {
-      ProcessResult result = await Process.run("adb-tools/${Platform.isWindows ? "adb.exe" : "adb"}", arguments);
-      if (result.exitCode != 0)
-      {
-        throw Exception(result.stderr);
-      }
-      return result.stdout.toString().trim();
-    }
-    catch (e)
-    {
-      return "$e";
-    }
-  }
-}
-
-
-class ADB_Shell
 {
   static Process? _process;
   static StreamSubscription<String>? _outputSubscription;
@@ -89,6 +69,7 @@ class ADB_Shell
 
   static Future<String> runCommand(String command) async
   {
+    start();
     await _ready.future;
     _commandResponse = Completer<String>();
     _process?.stdin.writeln("$command; echo $_delimiter");
@@ -102,6 +83,23 @@ class ADB_Shell
     _process?.kill();
     _process = null;
   }
+
+  static Future<String> run(List<String> arguments) async
+  {
+    try
+    {
+      ProcessResult result = await Process.run("adb-tools/${Platform.isWindows ? "adb.exe" : "adb"}", arguments);
+      if (result.exitCode != 0)
+      {
+        throw Exception(result.stderr);
+      }
+      return result.stdout.toString().trim();
+    }
+    catch (e)
+    {
+      return "$e";
+    }
+  }
 }
 
 class Device
@@ -112,10 +110,10 @@ class Device
 
   static Future<void> fetchDeviceInfo() async
   {
-    brand = await ADB_Shell.runCommand("getprop ro.product.manufacturer");
-    String fakeModel = await ADB_Shell.runCommand("getprop ro.product.model");
-    String realModel = await ADB_Shell.runCommand("getprop ro.product.vendor.marketname");
-    String osVersion = await ADB_Shell.runCommand("getprop ro.build.version.release");
+    brand = await ADB.runCommand("getprop ro.product.manufacturer");
+    String fakeModel = await ADB.runCommand("getprop ro.product.model");
+    String realModel = await ADB.runCommand("getprop ro.product.vendor.marketname");
+    String osVersion = await ADB.runCommand("getprop ro.build.version.release");
 
     model = "$realModel ($fakeModel)";
     os = "Android $osVersion";

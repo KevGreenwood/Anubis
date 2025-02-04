@@ -5,40 +5,61 @@ import 'adb.dart';
 
 class AppManager
 {
-  final int maxConcurrency = 20;
+  // singleton
+  static final AppManager _instance = AppManager._internal();
+
   late List<Application> applications;
+  bool _isLoaded = false;
+
+  AppManager._internal();
+
+  factory AppManager() => _instance;
 
   Future<void> fetchAllApplications() async
   {
-    String listApps = await ADB_Shell.runCommand("pm list packages");
-    List<String> packageNames = listApps.split('\n')
-        .where((line) => line.startsWith('package:'))
-        .map((line) => line.replaceFirst('package:', '').trim()).toList();
-
-    applications = [];
-    List<Future<void>> futures = [];
-
-    print("Getting info...");
-
-    for (int i = 0; i < packageNames.length; i++)
+    if (!_isLoaded)
     {
-      print("App #$i");
-      futures.add(Scrapper().fetchAppDetails(packageNames[i]).then((details) {
-        applications.add(Application(
+      String listApps = await ADB.runCommand("pm list packages");
+      List<String> packageNames = listApps.split('\n')
+          .where((line) => line.startsWith('package:'))
+          .map((line) => line.replaceFirst('package:', '').trim())
+          .toList();
+
+      applications = [];
+      List<Future<void>> futures = [];
+
+      print("Getting info...");
+
+      for (int i = 0; i < packageNames.length; i++)
+      {
+        print("App #$i");
+        futures.add(Scrapper().fetchAppDetails(packageNames[i]).then((details)
+        {
+          applications.add(Application(
             packageName: packageNames[i],
             appName: details['appName']!,
             author: details['author']!,
-            iconPath: details['iconPath']!
-        ));
-      }));
+            iconPath: details['iconPath']!,
+          ));
+        }));
 
-      if (futures.length == maxConcurrency || i == packageNames.length - 1)
-      {
-        await Future.wait(futures);
-        futures.clear();
+        if (futures.length == maxConcurrency || i == packageNames.length - 1)
+        {
+          await Future.wait(futures);
+          futures.clear();
+        }
       }
+      _isLoaded = true;
     }
   }
+
+  Future<void> reloadApplications() async
+  {
+    _isLoaded = false;
+    await fetchAllApplications();
+  }
+
+  final int maxConcurrency = 30;
 }
 
 Widget appCard(Application app, {required VoidCallback onDelete})
