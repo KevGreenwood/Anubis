@@ -2,8 +2,10 @@ import 'package:anubis/pages/android_page.dart';
 import 'package:anubis/pages/clean_page.dart';
 import 'package:anubis/pages/home_page.dart';
 import 'package:anubis/pages/settings_page.dart';
+import 'package:anubis/utils/downloader.dart';
 import 'package:flutter/material.dart';
 import 'utils/adb.dart';
+import 'utils/downloader.dart';
 
 void main() async
 {
@@ -69,7 +71,6 @@ class _MyHomePageState extends State<MyHomePage>
   Widget build(BuildContext context)
   {
     return Scaffold(
-
       body: Row(
         children: <Widget>[
           NavigationRail(
@@ -77,6 +78,7 @@ class _MyHomePageState extends State<MyHomePage>
           groupAlignment: -1,
           onDestinationSelected: (int index) {
             setState(() {
+              showDownloadProgressDialog(context);
               _selectedIndex = index;
             });
           },

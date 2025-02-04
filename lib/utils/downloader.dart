@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:http/http.dart' as http;
@@ -5,142 +6,192 @@ import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 
 
-void main() async
+class Downloader extends StatefulWidget
 {
-  if (!Directory("platform-tools").existsSync())
+  @override
+  _DownloaderState createState() => _DownloaderState();
+}
+
+
+
+
+class _DownloaderState extends State<Downloader>
+{
+  var status = "Descargando";
+  var progress = 'Por favor, espera...';
+  String fileName = 'platform-tools.zip';
+  String outputDir = 'platform-tools';
+
+  String? getPlatformToolsUrl()
   {
-    final url = getPlatformToolsUrl();
-    if (url == null)
+    if (Platform.isWindows)
     {
-      print('OS no supported');
-      return;
+      return 'https://dl.google.com/android/repository/platform-tools-latest-windows.zip';
     }
-
-    final fileName = 'platform-tools.zip';
-    final outputDir = 'platform-tools';
-
-    print('Downloading Platform Tools from: $url');
-    await downloadFile(url, 'platform-tools.zip');
-
-    print('Descomprimiendo el archivo...');
-    await unzipFile(fileName, outputDir);
-    print('Descompresión completada en el directorio: $outputDir');
-
-    print('Moviendo la carpeta descomprimida a un nivel superior...');
-    await moveFolderToParent(outputDir);
-
-    print('Operación completada. La carpeta se movió exitosamente.');
-  }
-}
-
-String? getPlatformToolsUrl()
-{
-  if (Platform.isWindows)
-  {
-    return 'https://dl.google.com/android/repository/platform-tools-latest-windows.zip';
-  }
-  else if (Platform.isMacOS)
-  {
-    return 'https://dl.google.com/android/repository/platform-tools-latest-darwin.zip';
-  }
-  else if (Platform.isLinux)
-  {
-    return 'https://dl.google.com/android/repository/platform-tools-latest-linux.zip';
-  }
-  else
-  {
-    return null;
-  }
-}
-
-Future<void> downloadFile(String url, String fileName) async
-{
-  try
-  {
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode == 200)
+    else if (Platform.isMacOS)
     {
-      final file = File(fileName);
-      await file.writeAsBytes(response.bodyBytes);
-      print('Download completed: $fileName');
+      return 'https://dl.google.com/android/repository/platform-tools-latest-darwin.zip';
+    }
+    else if (Platform.isLinux)
+    {
+      return 'https://dl.google.com/android/repository/platform-tools-latest-linux.zip';
     }
     else
     {
-      print('Download Error: ${response.statusCode}');
+      return null;
     }
   }
-  catch (e)
+
+  Future<void> downloadFile() async
   {
-    print('An error occurred during the download: $e');
-  }
-}
-
-Future<void> unzipFile(String zipPath, String outputDir) async
-{
-  try
-  {
-    final bytes = File(zipPath).readAsBytesSync();
-    final archive = ZipDecoder().decodeBytes(bytes);
-
-    final outputDirectory = Directory(outputDir);
-    if (!outputDirectory.existsSync())
+    status = "Descargando Platform Tools";
+    try
     {
-      outputDirectory.createSync(recursive: true);
-    }
-
-    for (final file in archive)
-    {
-      final filePath = '$outputDir/${file.name}';
-      if (file.isFile)
+      final response = await http.get(Uri.parse(getPlatformToolsUrl()!));
+      if (response.statusCode == 200)
       {
-        final outFile = File(filePath);
-        outFile.createSync(recursive: true);
-        outFile.writeAsBytesSync(file.content as List<int>);
+        final file = File(fileName);
+        await file.writeAsBytes(response.bodyBytes);
+        progress =  'Download completed: $fileName';
       }
       else
       {
-        Directory(filePath).createSync(recursive: true);
+        progress = 'Download Error: ${response.statusCode}';
       }
     }
-
-    print('File decompressed correctly');
-
-    if (File(zipPath).existsSync())
-      {
-        File(zipPath).deleteSync();
-      }
+    catch (e)
+    {
+      progress = 'An error occurred during the download: $e';
+    }
   }
-  catch (e)
+
+  Future<void> unzipFile() async
   {
-    print('File decompression error: $e');
+    status = "Descomprimiendo";
+    try
+    {
+      final bytes = File(fileName).readAsBytesSync();
+      final archive = ZipDecoder().decodeBytes(bytes);
+      final outputDirectory = Directory(outputDir);
+      if (!outputDirectory.existsSync())
+      {
+        outputDirectory.createSync(recursive: true);
+      }
+
+      for (final file in archive)
+      {
+        final filePath = '$outputDir/${file.name}';
+        if (file.isFile)
+        {
+          final outFile = File(filePath);
+          outFile.createSync(recursive: true);
+          outFile.writeAsBytesSync(file.content as List<int>);
+        }
+        else
+        {
+          Directory(filePath).createSync(recursive: true);
+        }
+      }
+
+      if (File(fileName).existsSync())
+      {
+        File(fileName).deleteSync();
+      }
+
+      progress = 'File decompressed correctly';
+
+
+    }
+    catch (e)
+    {
+      progress = 'File decompression error: $e';
+    }
   }
+
+  Future<void> moveFolderToParent() async
+  {
+    try
+    {
+      final currentDirectory = Directory.current;
+      final folder = Directory("platform-tools/platform-tools");
+
+      if (!folder.existsSync())
+      {
+        print('La carpeta $outputDir no existe.');
+        return;
+      }
+
+      final newPath = '${currentDirectory.path}/adb-tools';
+
+      await folder.rename(newPath);
+
+      if (Directory("platform-tools").existsSync())
+      {
+        print('La carpeta $newPath ya existe. Eliminando...');
+        await Directory("platform-tools").delete(recursive: true);
+      }
+
+      print('Carpeta movida a: $newPath');
+    }
+    catch (e)
+    {
+      progress = 'Error al mover la carpeta: $e';
+    }
+  }
+
 }
 
-Future<void> moveFolderToParent(String folderPath) async {
-  try {
-    final currentDirectory = Directory.current;
-    final folder = Directory("platform-tools/platform-tools");
+void showDownloadProgressDialog(BuildContext context)
+{
+  final downloader = Downloader();
+  bool isDownloading = true;
+  bool isComplete = false;
 
-    if (!folder.existsSync())
+
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text(status),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(isComplete ? '¡Completado!' : progress),
+          ],
+        ),
+      );
+    },
+  ).then((_)
+  {
+    // Este bloque se ejecuta cuando el diálogo se cierra
+    if (isComplete)
     {
-      print('La carpeta $folderPath no existe.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Proceso completado exitosamente.')),
+      );
+    }
+  });
+
+  // Ejecutar el proceso de descarga y descompresión
+  Future(() async
+  {
+    final url = downloader.getPlatformToolsUrl();
+    if (url == null)
+    {
+      print('OS no soportado');
       return;
     }
 
-    final newPath = '${currentDirectory.path}/adb-tools';
+    await downloader.downloadFile();
+    await downloader.unzipFile();
+    await downloader.moveFolderToParent();
 
-
-
-    await folder.rename(newPath);
-
-    if (Directory("platform-tools").existsSync())
-    {
-      print('La carpeta $newPath ya existe. Eliminando...');
-      await Directory("platform-tools").delete(recursive: true);
-    }
-
-    print('Carpeta movida a: $newPath');
-  } catch (e) {
-    print('Error al mover la carpeta: $e');
-  }
+    isDownloading = false;
+    isComplete = true;
+    Navigator.of(context).pop();
+  });
 }

@@ -49,7 +49,16 @@ class ADB
   static Future<void> start() async
   {
     if (_process != null) return;
-    _process = await Process.start("adb-tools/${Platform.isWindows ? "adb.exe" : "adb"}", ["shell"], mode: ProcessStartMode.normal);
+    if (Platform.isLinux)
+      {
+        _process = await Process.start("adb-tools/adb", ["shell"], mode: ProcessStartMode.normal);
+
+      }
+    else
+      {
+        _process = await Process.start("adb-tools/${Platform.isWindows ? "adb.exe" : "adb"}", ["shell"], mode: ProcessStartMode.normal);
+      }
+
 
     _outputSubscription = _process!.stdout.transform(utf8.decoder).listen((data)
     {
@@ -86,9 +95,19 @@ class ADB
 
   static Future<String> run(List<String> arguments) async
   {
+    ProcessResult? result;
     try
     {
-      ProcessResult result = await Process.run("adb-tools/${Platform.isWindows ? "adb.exe" : "adb"}", arguments);
+      if (Platform.isLinux)
+      {
+        result = await Process.run("adb-tools/adb", arguments);
+      }
+      else
+      {
+        result = await Process.run("adb-tools/${Platform.isWindows ? "adb.exe" : "adb"}", arguments);      }
+
+
+
       if (result.exitCode != 0)
       {
         throw Exception(result.stderr);
