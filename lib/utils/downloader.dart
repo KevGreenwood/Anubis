@@ -6,23 +6,18 @@ import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 
 
-class Downloader extends StatefulWidget
+class Downloader
 {
-  @override
-  _DownloaderState createState() => _DownloaderState();
-}
+  static final statusController = StreamController<String>.broadcast();
+  static final progressController = StreamController<String>.broadcast();
+  static String fileName = 'platform-tools.zip';
+  static String outputDir = 'platform-tools';
+  static bool isDownloading = false;
+  static bool isComplete = false;
 
+  static bool adbExists() => Directory("adb-tools").existsSync();
 
-
-
-class _DownloaderState extends State<Downloader>
-{
-  var status = "Descargando";
-  var progress = 'Por favor, espera...';
-  String fileName = 'platform-tools.zip';
-  String outputDir = 'platform-tools';
-
-  String? getPlatformToolsUrl()
+  static String? getPlatformToolsUrl()
   {
     if (Platform.isWindows)
     {
@@ -36,15 +31,11 @@ class _DownloaderState extends State<Downloader>
     {
       return 'https://dl.google.com/android/repository/platform-tools-latest-linux.zip';
     }
-    else
-    {
-      return null;
-    }
+    return null;
   }
 
-  Future<void> downloadFile() async
+  static Future<String> downloadFile() async
   {
-    status = "Descargando Platform Tools";
     try
     {
       final response = await http.get(Uri.parse(getPlatformToolsUrl()!));
@@ -52,26 +43,24 @@ class _DownloaderState extends State<Downloader>
       {
         final file = File(fileName);
         await file.writeAsBytes(response.bodyBytes);
-        progress =  'Download completed: $fileName';
+        return 'Download completed: $fileName';
       }
       else
       {
-        progress = 'Download Error: ${response.statusCode}';
+        return 'Download Error: ${response.statusCode}';
       }
     }
     catch (e)
     {
-      progress = 'An error occurred during the download: $e';
+      return 'An error occurred during the download: $e';
     }
   }
 
-  Future<void> unzipFile() async
+  static Future<String> unzipFile() async
   {
-    status = "Descomprimiendo";
     try
     {
-      final bytes = File(fileName).readAsBytesSync();
-      final archive = ZipDecoder().decodeBytes(bytes);
+      final archive = ZipDecoder().decodeBytes(File(fileName).readAsBytesSync());
       final outputDirectory = Directory(outputDir);
       if (!outputDirectory.existsSync())
       {
@@ -98,100 +87,145 @@ class _DownloaderState extends State<Downloader>
         File(fileName).deleteSync();
       }
 
-      progress = 'File decompressed correctly';
-
-
+      return 'File decompressed correctly';
     }
     catch (e)
     {
-      progress = 'File decompression error: $e';
+      return 'File decompression error: $e';
     }
   }
 
-  Future<void> moveFolderToParent() async
+  static Future<String> moveFolderToParent() async
   {
     try
     {
-      final currentDirectory = Directory.current;
       final folder = Directory("platform-tools/platform-tools");
 
       if (!folder.existsSync())
       {
-        print('La carpeta $outputDir no existe.');
-        return;
+        return "Por favor, espera...";
       }
 
-      final newPath = '${currentDirectory.path}/adb-tools';
+      final newPath = '${Directory.current.path}/adb-tools';
 
       await folder.rename(newPath);
 
       if (Directory("platform-tools").existsSync())
       {
-        print('La carpeta $newPath ya existe. Eliminando...');
         await Directory("platform-tools").delete(recursive: true);
       }
-
-      print('Carpeta movida a: $newPath');
     }
     catch (e)
     {
-      progress = 'Error al mover la carpeta: $e';
+      return 'Error al mover la carpeta: $e';
     }
+    return "Por favor, espera...";
   }
 
-}
-
-void showDownloadProgressDialog(BuildContext context)
-{
-  final downloader = Downloader();
-  bool isDownloading = true;
-  bool isComplete = false;
-
-
-
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text(status),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text(isComplete ? '¡Completado!' : progress),
+  static Future<void> showDownloadPreparationDialogs(BuildContext context) async
+  {
+    await showDialog(
+      context: context,
+      builder: (BuildContext context)
+      {
+        return AlertDialog(
+          title: Text('Descarga necesaria'),
+          content: Text('Se necesitan herramientas de ADB. Se iniciará la descarga.'),
+          actions: [
+            TextButton(
+              child: Text('OK'),
+              onPressed: ()
+              {
+                Navigator.of(context).pop();
+                showDownloadProgressDialog(context);
+              },
+            ),
           ],
-        ),
-      );
-    },
-  ).then((_)
+        );
+      },
+    );
+
+    /*await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Habilitar depuración USB'),
+          content: Text('Por favor, habilita la depuración USB en tu dispositivo Android:\n\n1. Ve a Configuración\n2. Opciones de desarrollador\n3. Activa "Depuración USB"'),
+          actions: [
+            TextButton(
+              child: Text('Entendido'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );*/
+  }
+
+
+  static Future<void> showDownloadProgressDialog(BuildContext context) async
   {
-    // Este bloque se ejecuta cuando el diálogo se cierra
-    if (isComplete)
+    isDownloading = true;
+    isComplete = false;
+    statusController.add("Descargando");
+    progressController.add("Por favor, espera...");
+
+    final NavigatorState navigator = Navigator.of(context);
+    final ScaffoldMessengerState scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context)
+      {
+        return AlertDialog(
+          title: StreamBuilder<String>(
+            stream: statusController.stream,
+            initialData: "Descargando",
+            builder: (context, statusSnapshot)
+            {
+              return Text(statusSnapshot.data!);
+            },
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              StreamBuilder<String>(
+                stream: progressController.stream,
+                initialData: "Por favor, espera...",
+                builder: (context, progressSnapshot) => Text(progressSnapshot.data!),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    try
     {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Proceso completado exitosamente.')),
-      );
-    }
-  });
+      statusController.add("Descargando Platform Tools");
+      progressController.add(await downloadFile());
+      statusController.add("Descomprimiendo");
+      progressController.add(await unzipFile());
+      statusController.add("Moviendo archivos");
+      progressController.add(await moveFolderToParent());
 
-  // Ejecutar el proceso de descarga y descompresión
-  Future(() async
-  {
-    final url = downloader.getPlatformToolsUrl();
-    if (url == null)
+      navigator.pop();
+      scaffoldMessenger.showSnackBar(SnackBar(content: Text('Proceso completado exitosamente.')),);
+    }
+    catch (e)
     {
-      print('OS no soportado');
-      return;
+      navigator.pop();
+      scaffoldMessenger.showSnackBar(SnackBar(content: Text('Ocurrió un error: $e')),);
     }
-
-    await downloader.downloadFile();
-    await downloader.unzipFile();
-    await downloader.moveFolderToParent();
-
-    isDownloading = false;
-    isComplete = true;
-    Navigator.of(context).pop();
-  });
+    finally
+    {
+      statusController.close();
+      progressController.close();
+    }
+  }
 }

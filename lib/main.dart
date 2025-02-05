@@ -51,13 +51,21 @@ class MyHomePage extends StatefulWidget
 
 class _MyHomePageState extends State<MyHomePage>
 {
-  static List<Widget> _pageOptions = [
-    HomePage(),
-    AndroidPage(),
-    CleanPage(),
-    SettingsPage()
-  ];
+  static final List<Widget> _pageOptions = [ HomePage(), AndroidPage(), const CleanPage(), const SettingsPage()];
   int _selectedIndex = 0;
+
+  @override
+  void initState()
+  {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_)
+    {
+      if (!Downloader.adbExists())
+        {
+          Downloader.showDownloadPreparationDialogs(context);
+        }
+    });
+  }
 
   @override
   void dispose()
@@ -78,7 +86,6 @@ class _MyHomePageState extends State<MyHomePage>
           groupAlignment: -1,
           onDestinationSelected: (int index) {
             setState(() {
-              showDownloadProgressDialog(context);
               _selectedIndex = index;
             });
           },

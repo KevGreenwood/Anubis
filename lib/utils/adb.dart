@@ -1,40 +1,6 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:html/parser.dart';
-
-
-class Scrapper
-{
-  Future<Map<String, String>> fetchAppDetails(String packageName) async
-  {
-    final response = await http.get(Uri.parse("https://play.google.com/store/apps/details?id=$packageName"));
-    try
-    {
-      if (response.statusCode != 200)
-      {
-        throw Exception("No se pudo obtener la información de la app");
-      }
-
-      var document = parse(response.body);
-      String? appName = document.querySelector('span[itemprop="name"]')?.text.trim();
-      String? author = document.querySelector('a[href^="/store/apps/developer?id="] span, a[href^="/store/apps/dev?id="] span')?.text.trim();
-      String? iconPath = document.querySelector('.RhBWnf img')?.attributes['src'];
-
-      return
-        {
-          'appName': appName ?? '',
-          'author': author ?? '',
-          'iconPath': iconPath ?? ''
-        };
-    }
-    catch (e)
-    {
-      return {'appName': '', 'author': '', 'iconPath': ''};
-    }
-  }
-}
 
 
 class ADB
@@ -52,13 +18,11 @@ class ADB
     if (Platform.isLinux)
       {
         _process = await Process.start("adb-tools/adb", ["shell"], mode: ProcessStartMode.normal);
-
       }
     else
       {
         _process = await Process.start("adb-tools/${Platform.isWindows ? "adb.exe" : "adb"}", ["shell"], mode: ProcessStartMode.normal);
       }
-
 
     _outputSubscription = _process!.stdout.transform(utf8.decoder).listen((data)
     {
@@ -104,9 +68,8 @@ class ADB
       }
       else
       {
-        result = await Process.run("adb-tools/${Platform.isWindows ? "adb.exe" : "adb"}", arguments);      }
-
-
+        result = await Process.run("adb-tools/${Platform.isWindows ? "adb.exe" : "adb"}", arguments);
+      }
 
       if (result.exitCode != 0)
       {
@@ -139,7 +102,8 @@ class Device
   }
 }
 
-class Application {
+class Application
+{
   String packageName;
   String appName;
   String author;
@@ -171,7 +135,5 @@ class Application {
   }
 
   @override
-  String toString() {
-    return 'Application(appName: $appName, packageName: $packageName, author: $author, iconPath: $iconPath)';
-  }
+  String toString() => 'Application(appName: $appName, packageName: $packageName, author: $author, iconPath: $iconPath)';
 }
