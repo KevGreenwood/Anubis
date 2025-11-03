@@ -4,6 +4,8 @@ import 'package:anubis/utils/adb.dart';
 
 class HomePage extends StatefulWidget
 {
+  const HomePage({super.key});
+
   @override
   _HomePageState createState() => _HomePageState();
 }

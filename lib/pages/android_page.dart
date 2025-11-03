@@ -5,6 +5,8 @@ import '../utils/adb.dart';
 
 class AndroidPage extends StatefulWidget
 {
+  const AndroidPage({super.key});
+
   @override
   _AndroidPageState createState() => _AndroidPageState();
 }
@@ -58,10 +60,10 @@ class _AndroidPageState extends State<AndroidPage>
   {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Aplicaciones Instaladas'),
+        title: const Text('Aplicaciones Instaladas'),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh),
             onPressed: () async {
               setState(() {
                 isLoading = true;
@@ -75,7 +77,7 @@ class _AndroidPageState extends State<AndroidPage>
         ],
       ),
       body: isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
         itemCount: appManager.applications.length,
         itemBuilder: (context, index) {

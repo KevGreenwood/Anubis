@@ -7,7 +7,7 @@ class ADB
 {
   static Process? _process;
   static StreamSubscription<String>? _outputSubscription;
-  static Completer<void> _ready = Completer<void>();
+  static final Completer<void> _ready = Completer<void>();
   static Completer<String>? _commandResponse;
   static String _buffer = '';
   static const String _delimiter = "END_OF_COMMAND";

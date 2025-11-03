@@ -129,11 +129,11 @@ class Downloader
       builder: (BuildContext context)
       {
         return AlertDialog(
-          title: Text('Descarga necesaria'),
-          content: Text('Se necesitan herramientas de ADB. Se iniciará la descarga.'),
+          title: const Text('Descarga necesaria'),
+          content: const Text('Se necesitan herramientas de ADB. Se iniciará la descarga.'),
           actions: [
             TextButton(
-              child: Text('OK'),
+              child: const Text('OK'),
               onPressed: ()
               {
                 Navigator.of(context).pop();
@@ -215,7 +215,7 @@ class Downloader
       progressController.add(await moveFolderToParent());
 
       navigator.pop();
-      scaffoldMessenger.showSnackBar(SnackBar(content: Text('Proceso completado exitosamente.')),);
+      scaffoldMessenger.showSnackBar(const SnackBar(content: Text('Proceso completado exitosamente.')),);
     }
     catch (e)
     {

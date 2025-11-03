@@ -5,7 +5,6 @@ import 'package:anubis/pages/settings_page.dart';
 import 'package:anubis/utils/downloader.dart';
 import 'package:flutter/material.dart';
 import 'utils/adb.dart';
-import 'utils/downloader.dart';
 
 void main() async
 {
@@ -51,7 +50,7 @@ class MyHomePage extends StatefulWidget
 
 class _MyHomePageState extends State<MyHomePage>
 {
-  static final List<Widget> _pageOptions = [ HomePage(), AndroidPage(), const CleanPage(), const SettingsPage()];
+  static final List<Widget> _pageOptions = [ const HomePage(), const AndroidPage(), const CleanPage(), const SettingsPage()];
   int _selectedIndex = 0;
 
   @override
